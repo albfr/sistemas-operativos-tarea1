@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include "favs/favs.h"
 
 #define MAXCOM 1000 // Máximo número de caracteres para la entrada del usuario
 #define MAXLIST 100 // Máximo número de comandos
@@ -104,23 +105,26 @@ void manejarPipesMultiples(char ***comandos, int numComandos) {
     }
 }
 
+
 // Función que maneja la ejecución de comandos internos como "exit" y "cd"
 int manejarComandosInternos(char **argumentos) {
+    int ejecutado = 0;
     for (int i = 0; i < NUM_COMANDOS_INTERNOS; i++) {
         if (strcmp(argumentos[0], COMANDOS_INTERNOS[i]) == 0) {
             switch (i) {
                 case 0: // "exit"
                     printf("Saliendo de la terminal...\n");
                     exit(0);
+                    break;
                 case 1: // "cd"
-                    if (chdir(argumentos[1]) != 0) {
+                    if (chdir(argumentos[1]) != 0)
                         perror("Error al cambiar de directorio");
-                    }
-                    return 1;
+                    ejecutado = 1;
+                    break;
             }
         }
     }
-    return 0;
+    return ejecutado;
 }
 
 // Función que separa la cadena de entrada en comandos individuales utilizando pipes
@@ -167,20 +171,35 @@ int main() {
     sleep(1);
     printf("\033[H\033[J");
 
-    // Bucle principal de la shell
-    while (1) {
-        propmt(); // Mostrar el prompt
+    int ctp[2], ptc[2];
+    if (pipe(ctp) == -1) {
+        perror("Ocurrió un error al abrir pipe\n");
+        return 1;
+    }
+    if (pipe(ptc) == -1) {
+        perror("Ocurrió un error al abrir pipe\n");
+        return 1;
+    }
+    int id = fork();
 
-        if (leerEntradaUsuario(cadenaEntrada)) // Leer la entrada del usuario
-            continue;
+    if (id == 0) { // proceso hijo favs
+        favs_process();
+    }
+    else { // proceso principal de prompt
+        while (1) {
+            propmt(); // Mostrar el prompt
 
-        numComandos = procesarCadenaEntrada(cadenaEntrada, comandos, &numComandos); // Procesar la entrada
+            if (leerEntradaUsuario(cadenaEntrada)) // Leer la entrada del usuario
+                continue;
 
-        if (numComandos > 0)
-            manejarPipesMultiples(comandos, numComandos); // Manejar los comandos si hay pipes
+            numComandos = procesarCadenaEntrada(cadenaEntrada, comandos, &numComandos); // Procesar la entrada
 
-        for (int i = 0; i < numComandos; i++) { // Liberar la memoria utilizada
-            free(comandos[i]);
+            if (numComandos > 0)
+                manejarPipesMultiples(comandos, numComandos); // Manejar los comandos si hay pipes
+
+            for (int i = 0; i < numComandos; i++) { // Liberar la memoria utilizada
+                free(comandos[i]);
+            }
         }
     }
     return 0;
