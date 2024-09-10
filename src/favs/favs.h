@@ -85,7 +85,7 @@ int favs_process(int ctp[2], int ptc[2]) {
                 error = manejarBorrar(sargv);
                 break;
             case 6:
-                error = manejarEjecutar(sargv);
+                // error = manejarEjecutar(sargv);
                 break;
             case 7:
                 error = manejarCargar(sargv);
