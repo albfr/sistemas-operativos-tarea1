@@ -11,22 +11,24 @@
 #include <algorithm>
 #include <errno.h>
 #include "favs/favs.h"
+#include "recordatorio/set.h"
 
-#define MAXCOM 1000 // Máximo número de caracteres para la entrada del usuario
-#define MAXLIST 100 // Máximo número de comandos
-#define NUM_COMANDOS_INTERNOS 3 // Número de comandos internos soportados
+#define MAXCOM 1000             // Máximo número de caracteres para la entrada del usuario
+#define MAXLIST 100             // Máximo número de comandos
+#define NUM_COMANDOS_INTERNOS 4 // Número de comandos internos soportados
 
 // const char *COMANDOS_INTERNOS[NUM_COMANDOS_INTERNOS] = {"exit", "cd"}; // Lista de comandos internos
-const std::vector<std::string> COMANDOS_INTERNOS = {"exit", "cd", "favs"};
-std::vector<std::string> historial;
+const std::vector<std::string> COMANDOS_INTERNOS = {"exit", "cd", "favs", "set"};
 
 // Función para mostrar el prompt de la shell, que incluye el nombre de la shell y el directorio actual
-void prompt(){
+void prompt()
+{
     printf("\033[32mmishell\033[0m:$ "); // Color del prompt en verde
 }
 
 // Manejador de señal para Ctrl+C
-void manejarCtrlC(int sig){
+void manejarCtrlC(int sig)
+{
     printf("\n");
     prompt();
     fflush(stdout);
@@ -34,17 +36,20 @@ void manejarCtrlC(int sig){
 
 // Función que lee la entrada del usuario
 // int leerEntradaUsuario(char *entrada) {
-int leerEntradaUsuario(std::string &line) {
+void leerEntradaUsuario(std::string &line)
+{
     getline(std::cin, line);
-    return 0;
 }
 
-char** vvstring_to_vvcstring(std::vector<std::string> &argumentos) {
-    char **argumentos_c = (char**)malloc(sizeof(char*) * argumentos.size());
-    for (int i = 0; i < argumentos.size(); i++) {
+char **vvstring_to_vvcstring(std::vector<std::string> &argumentos)
+{
+    char **argumentos_c = (char **)malloc(sizeof(char *) * argumentos.size());
+    for (int i = 0; i < argumentos.size(); i++)
+    {
         int m = argumentos[i].length();
-        argumentos_c[i] = (char*)malloc(sizeof(char) * (argumentos[i].length()+1));
-        for (int j=0;j<m;j++) {
+        argumentos_c[i] = (char *)malloc(sizeof(char) * (argumentos[i].length() + 1));
+        for (int j = 0; j < m; j++)
+        {
             argumentos_c[i][j] = argumentos[i][j];
         }
         argumentos_c[i][m] = '\0';
@@ -52,8 +57,10 @@ char** vvstring_to_vvcstring(std::vector<std::string> &argumentos) {
     return argumentos_c;
 }
 
-void free_vvcstring(char **vvcstring, int n) {
-    for (int i = 0; i < n; i++) {
+void free_vvcstring(char **vvcstring, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
         free(vvcstring[i]);
     }
     free(vvcstring);
@@ -61,7 +68,8 @@ void free_vvcstring(char **vvcstring, int n) {
 
 // Función que crea un proceso hijo para ejecutar un comando utilizando execvp
 // void ejecutarProceso(char **argumentos) {
-void ejecutarProceso(std::vector<std::string> &argumentos) {
+void ejecutarProceso(std::vector<std::string> &argumentos)
+{
     pid_t pid = fork(); // Crea un nuevo proceso hijo
     int maxsize = 0;
     for (int i = 0; i < argumentos.size(); i++)
@@ -69,72 +77,88 @@ void ejecutarProceso(std::vector<std::string> &argumentos) {
 
     // char **argumentos_c = (char**)malloc(sizeof(char**) * argumentos.size());
 
-    if (pid < 0) { 
+    if (pid < 0)
+    {
         perror("Error al crear el proceso hijo");
     }
-    else if (pid == 0) { // Proceso hijo
+    else if (pid == 0)
+    { // Proceso hijo
 
-        if (argumentos[0].compare(COMANDOS_INTERNOS[2]) != 0)
+        if (argumentos[0].compare(COMANDOS_INTERNOS[2]) != 0 and argumentos[0].compare(COMANDOS_INTERNOS[3]) != 0)
         {
             // Reemplaza el proceso hijo con el nuevo programa
             char **argumentos_c = vvstring_to_vvcstring(argumentos);
             int error = execvp(argumentos_c[0], argumentos_c);
             free_vvcstring(argumentos_c, argumentos.size());
 
-            if (error < 0) {
+            if (error < 0)
+            {
                 fprintf(stderr, "errno = %d\n", errno);
                 printf("Orden \"%s\" no encontrada.\n", argumentos_c[0]);
                 exit(EXIT_FAILURE);
             }
         }
     }
-    else { // Proceso padre
+    else
+    {               // Proceso padre
         wait(NULL); // Espera a que el proceso hijo termine
     }
 }
 
 // Función para manejar múltiples comandos separados por pipes
 // void manejarPipesMultiples(char ***comandos, int numComandos) {
-void manejarPipesMultiples(std::vector<std::vector<std::string>> &comandos) {
+void manejarPipesMultiples(std::vector<std::vector<std::string>> &comandos)
+{
     int pipefd[2], aux_fd[2]; // Descriptores de archivo para los pipes
     pid_t pid;
     int i;
 
     int numComandos = comandos.back().size();
-    for (i = 0; i < numComandos; i++) {
+    for (i = 0; i < numComandos; i++)
+    {
         // Crear pipe si no es el último comando
-        if (i < numComandos - 1) {
-            if (pipe(pipefd) == -1) {
+        if (i < numComandos - 1)
+        {
+            if (pipe(pipefd) == -1)
+            {
                 perror("Error al crear pipe");
                 exit(EXIT_FAILURE);
             }
         }
 
         pid = fork(); // Crea un nuevo proceso hijo para ejecutar el comando
-        if (pid < 0) { // Error al crear el proceso hijo
+        if (pid < 0)
+        { // Error al crear el proceso hijo
             perror("Error al crear el proceso hijo");
             exit(EXIT_FAILURE);
         }
 
-        if (pid == 0) { // Proceso hijo
-            if (i > 0) { // No es el primer comando, lee de aux_fd (pipe anterior)
+        if (pid == 0)
+        { // Proceso hijo
+            if (i > 0)
+            {                                  // No es el primer comando, lee de aux_fd (pipe anterior)
                 dup2(aux_fd[0], STDIN_FILENO); // Redirige la entrada estándar al pipe anterior
                 close(aux_fd[0]);
                 close(aux_fd[1]);
             }
-            if (i < numComandos - 1) { // No es el último comando, escribe en pipefd
+            if (i < numComandos - 1)
+            {                                   // No es el último comando, escribe en pipefd
                 dup2(pipefd[1], STDOUT_FILENO); // Redirige la salida estándar al nuevo pipe
                 close(pipefd[0]);
                 close(pipefd[1]);
             }
             ejecutarProceso(comandos.back()); // Ejecuta el comando
             exit(EXIT_SUCCESS);
-        } else { // Proceso padre
-            if (i > 0) { // Cierra el pipe anterior después de que el hijo lo haya usado
+        }
+        else
+        { // Proceso padre
+            if (i > 0)
+            { // Cierra el pipe anterior después de que el hijo lo haya usado
                 close(aux_fd[0]);
                 close(aux_fd[1]);
             }
-            if (i < numComandos - 1) { // Guarda pipefd para el siguiente comando
+            if (i < numComandos - 1)
+            { // Guarda pipefd para el siguiente comando
                 aux_fd[0] = pipefd[0];
                 aux_fd[1] = pipefd[1];
             }
@@ -143,25 +167,31 @@ void manejarPipesMultiples(std::vector<std::vector<std::string>> &comandos) {
     }
 }
 
-
 // Función que maneja la ejecución de comandos internos como "exit" y "cd"
 // int manejarComandosInternos(char **argumentos) {
-int manejarComandosInternos(std::vector<std::string> &argumentos) {
+int manejarComandosInternos(std::vector<std::string> &argumentos, std::vector<std::string> &historial)
+{
     int ejecutado = 0;
-    for (int i = 0; i < NUM_COMANDOS_INTERNOS; i++) {
-        if (argumentos[0].compare(COMANDOS_INTERNOS[i]) == 0) {
-            switch (i) {
-                case 0: // "exit"
-                    printf("Saliendo de la terminal...\n");
-                    exit(0);
-                    break;
-                case 1: // "cd"
-                    if (chdir(argumentos[1].c_str()) != 0)
-                        perror("Error al cambiar de directorio");
-                    return 1;
-                case 2: // "favs"
-                    favs_process(argumentos, historial);
-                    break;
+    for (int i = 0; i < NUM_COMANDOS_INTERNOS; i++)
+    {
+        if (argumentos[0].compare(COMANDOS_INTERNOS[i]) == 0)
+        {
+            switch (i)
+            {
+            case 0: // "exit"
+                printf("Saliendo de la terminal...\n");
+                exit(0);
+                break;
+            case 1: // "cd"
+                if (chdir(argumentos[1].c_str()) != 0)
+                    perror("Error al cambiar de directorio");
+                return 1;
+            case 2: // "favs"
+                favs_process(argumentos, historial);
+                break;
+            case 3: // "set" (recordatorio)
+                set_process(argumentos);
+                break;
             }
         }
     }
@@ -170,7 +200,8 @@ int manejarComandosInternos(std::vector<std::string> &argumentos) {
 
 // Función que separa la cadena de entrada en comandos individuales utilizando pipes
 // void separarComandosPorPipe(char *cadena, char ***comandos, int *numComandos) {
-void separarComandosPorPipe(std::string &cadena, std::vector<std::vector<std::string>> &comandos) {
+void separarComandosPorPipe(std::string &cadena, std::vector<std::vector<std::string>> &comandos)
+{
     // char *comando;
     std::string comando;
 
@@ -179,8 +210,9 @@ void separarComandosPorPipe(std::string &cadena, std::vector<std::vector<std::st
     cadena += '|';
     int prev = 0;
     int pos = cadena.find('|');
-    while (pos != std::string::npos) {
-        comando = cadena.substr(prev, pos-prev) + ' ';
+    while (pos != std::string::npos)
+    {
+        comando = cadena.substr(prev, pos - prev) + ' ';
         comandos.push_back(std::vector<std::string>(0));
         // comandos[*numComandos] = (char **)malloc(MAXLIST * sizeof(char *));
 
@@ -188,73 +220,104 @@ void separarComandosPorPipe(std::string &cadena, std::vector<std::vector<std::st
         char *arg;
         int first = 0;
         int second = comando.find(' ');
-        while (second != std::string::npos) {
-            comandos.back().push_back(comando.substr(first, second-first));
+        while (second != std::string::npos)
+        {
+            comandos.back().push_back(comando.substr(first, second - first));
             first = second + 1;
-            second = comando.find(" ", second+1, 1);
+            second = comando.find(" ", second + 1, 1);
         }
         prev = pos + 1;
-        pos = cadena.find('|', pos+1);
+        pos = cadena.find('|', pos + 1);
     }
     cadena.pop_back();
 }
 
 // Función principal que procesa la cadena de entrada y decide cómo manejarla (comando interno o pipe)
 // int procesarCadenaEntrada(char *cadena, char ***comandos, int *numComandos) {
-int procesarCadenaEntrada(std::string &cadena, std::vector<std::vector<std::string>> &comandos) {
+int procesarCadenaEntrada(std::string &cadena, std::vector<std::vector<std::string>> &comandos, std::vector<std::string> &historial)
+{
     separarComandosPorPipe(cadena, comandos);
 
     // Verifica si es un comando interno y lo maneja si es necesario
-    if (comandos.back().size() > 0 && manejarComandosInternos(comandos.back()))
+    if (comandos.back().size() > 0 && manejarComandosInternos(comandos.back(), historial))
         return 1;
     return 0;
 }
 
-int main() {
-    // char cadenaEntrada[MAXCOM]; // Buffer para la entrada del usuario
+void agregarAlHistorial(std::string &comando, std::vector<std::string> &historial)
+{
+    // Eliminar espacios en blanco al inicio y al final
+    // comando.erase(0, comando.find_first_not_of(" \n\r\t")); // Eliminar al inicio
+    // comando.erase(comando.find_last_not_of(" \n\r\t") + 1); // Eliminar al final
+
+    // No añadir si es una cadena vacía
+    if (comando.empty())
+        return;
+
+    // Verificar si el comando ya está en el historial
+    bool existe = false;
+    for (const auto &cmd : historial)
+    {
+        if (cmd == comando)
+        {
+            existe = true;
+            break;
+        }
+    }
+
+    // Añadir al historial si no existe
+    if (!existe) {
+        historial.push_back(comando);
+        // std::cout << "Comando '" << comando << "' añadido al historial\n";
+    }
+}
+
+int main()
+{
     std::string cadenaEntrada;
-    // char **comandos[MAXLIST]; // Arreglo para almacenar los comandos separados por pipes
     std::vector<std::vector<std::string>> comandos;
-    int numComandos; 
 
     // Configurar el manejador de señales para Ctrl + C
     signal(SIGINT, manejarCtrlC);
 
     // Inicialización y bienvenida
-    printf("\033[H\033[J"); 
+    printf("\033[H\033[J");
     printf("Abriendo terminal...\n");
     sleep(0.3);
     printf("\033[H\033[J");
 
-    int ctp[2], ptc[2];
-    if (pipe(ctp) == -1) {
-        perror("Ocurrió un error al abrir pipe\n");
-        return 1;
-    }
-    if (pipe(ptc) == -1) {
-        perror("Ocurrió un error al abrir pipe\n");
-        return 1;
-    }
-    int id = fork();
-
-    std::vector<std::string> history; // favs dinamico
-    while (true) {
+    std::vector<std::string> historial; // favs dinamico
+    while (true)
+    {
         prompt(); // Mostrar el prompt
 
-        if (leerEntradaUsuario(cadenaEntrada)) // Leer la entrada del usuario
+        leerEntradaUsuario(cadenaEntrada); // Leer la entrada del usuario
+        if (cadenaEntrada.compare("") == 0)
             continue;
-        
-        bool exists = false;
-        for (int i = 0; i < history.size(); i++) {
-            if (history[i].compare(cadenaEntrada) == 0) {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists)
-            history.push_back(cadenaEntrada);
-        
-        int ejecutado = procesarCadenaEntrada(cadenaEntrada, comandos); // Procesar la entrada
+        agregarAlHistorial(cadenaEntrada, historial);                              /*
+                                      bool exists = false;
+                                      for (int i = 0; i < historial.size(); i++) {
+                                          if (cadenaEntrada.compare(historial[i]) == 0) {
+                                              exists = true;
+                                              break;
+                                          }
+                                      }
+                                      if (!exists) {
+                                          historial.push_back(cadenaEntrada);
+                                          std::cout << "Added " << cadenaEntrada << " to historial\n";
+                                          std::cout << "New size is " << historial.size() << "\n";
+                                      }
+                                      else {
+                                          std::cout << "Didn't added to historial since it already exists there\n";
+                             
+                                      }
+                             
+                                      std::cout << "historial:\n";
+                                      for (int i = 0; i < historial.size(); i++) {
+                                          std::cout << i+1 << " " << historial[i] << "\n";
+                                      }
+                                      */
+        int ejecutado = procesarCadenaEntrada(cadenaEntrada, comandos, historial); // Procesar la entrada
 
         // for (int i = 0; i < comandos.size(); i++) {
         //     for (int j = 0; j < comandos[i].size(); j++) {
@@ -274,7 +337,8 @@ int main() {
         }
         */
 
-        if (!ejecutado) {
+        if (!ejecutado)
+        {
             manejarPipesMultiples(comandos); // Manejar los comandos si hay pipes
         }
 

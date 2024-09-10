@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-void imprimirUsoCorrecto()
+void imprimirUsoCorrectoRecordatorio()
 {
     std::cout << "Uso: set [comando] [ajustes]\n";
     std::cout << "Permite definir un recordatorio\n";
@@ -18,9 +18,9 @@ void imprimirUsoCorrecto()
     std::cout << "\n";
 }
 
-int manejarAyuda(const std::vector<std::string> &argv)
+int manejarAyudaRecordatorio(const std::vector<std::string> &argv)
 {
-    imprimirUsoCorrecto();
+    imprimirUsoCorrectoRecordatorio();
     return 0;
 }
 

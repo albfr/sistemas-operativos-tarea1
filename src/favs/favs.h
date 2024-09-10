@@ -24,7 +24,6 @@ int determinarComando(const std::string &cmd) {
     return -1;
 }
 
-
 void favs_process(std::vector<std::string> &argv, std::vector<std::string> &historial) {
 
     int argc = argv.size();
@@ -59,7 +58,7 @@ void favs_process(std::vector<std::string> &argv, std::vector<std::string> &hist
             error = manejarBuscar(argv);
             break;
         case 5:
-            error = manejarBorrar(argv);
+            error = manejarBorrar(argv, historial);
             break;
         case 6:
             // error = manejarEjecutar(argv);
