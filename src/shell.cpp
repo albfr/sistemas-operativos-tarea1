@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <string>
+#include <vector>
+#include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -8,7 +10,6 @@
 #include <signal.h>
 #include <algorithm>
 #include <errno.h>
-#include "favs/favs.h"
 
 #define MAXCOM 1000 // Máximo número de caracteres para la entrada del usuario
 #define MAXLIST 100 // Máximo número de comandos
@@ -18,20 +19,14 @@
 const std::vector<std::string> COMANDOS_INTERNOS = {"exit", "cd"};
 
 // Función para mostrar el prompt de la shell, que incluye el nombre de la shell y el directorio actual
-void propmt(){
+void prompt(){
     printf("\033[32mmishell\033[0m:$ "); // Color del prompt en verde
-    // char directorioActual[1024];
-    // if (getcwd(directorioActual, sizeof(directorioActual)) != NULL) {
-    //     printf(":\033[94m%s\033[0m$ ", directorioActual); // Color del directorio en azul
-    // } else {
-    //     perror("Error obteniendo el directorio actual");
-    // }
 }
 
 // Manejador de señal para Ctrl+C
 void manejarCtrlC(int sig){
     printf("\n");
-    propmt();
+    prompt();
     fflush(stdout);
 }
 
@@ -42,6 +37,26 @@ int leerEntradaUsuario(std::string &line) {
     return 0;
 }
 
+char** vvstring_to_vvcstring(std::vector<std::string> &argumentos) {
+    char **argumentos_c = (char**)malloc(sizeof(char*) * argumentos.size());
+    for (int i = 0; i < argumentos.size(); i++) {
+        int m = argumentos[i].length();
+        argumentos_c[i] = (char*)malloc(sizeof(char) * (argumentos[i].length()+1));
+        for (int j=0;j<m;j++) {
+            argumentos_c[i][j] = argumentos[i][j];
+        }
+        argumentos_c[i][m] = '\0';
+    }
+    return argumentos_c;
+}
+
+void free_vvcstring(char **vvcstring, int n) {
+    for (int i = 0; i < n; i++) {
+        free(vvcstring[i]);
+    }
+    free(vvcstring);
+}
+
 // Función que crea un proceso hijo para ejecutar un comando utilizando execvp
 // void ejecutarProceso(char **argumentos) {
 void ejecutarProceso(std::vector<std::string> &argumentos) {
@@ -50,33 +65,22 @@ void ejecutarProceso(std::vector<std::string> &argumentos) {
     for (int i = 0; i < argumentos.size(); i++)
         maxsize = std::max(maxsize, (int)argumentos[i].length());
 
-    char **argumentos_c = (char**)malloc(sizeof(char**) * argumentos.size());
+    // char **argumentos_c = (char**)malloc(sizeof(char**) * argumentos.size());
 
     if (pid < 0) { 
         perror("Error al crear el proceso hijo");
     }
     else if (pid == 0) { // Proceso hijo
         // Reemplaza el proceso hijo con el nuevo programa
-        for (int i = 0; i < argumentos.size(); i++) {
-            // argumentos_c[i] = const_cast<char*>(argumentos[i].c_str());
-            int m = argumentos[i].length();
-            argumentos_c[i] = (char*)malloc(sizeof(char) * (argumentos[i].length()+1));
-            for (int j=0;j<m;j++) {
-                argumentos_c[i][j] = argumentos[i][j];
-            }
-            argumentos_c[i][m] = '\0';
-        }
+        char **argumentos_c = vvstring_to_vvcstring(argumentos);
         int error = execvp(argumentos_c[0], argumentos_c);
+        free_vvcstring(argumentos_c, argumentos.size());
 
         if (error < 0) {
             fprintf(stderr, "errno = %d\n", errno);
             printf("Orden \"%s\" no encontrada.\n", argumentos_c[0]);
             exit(EXIT_FAILURE);
         }
-        for (int i = 0; i < argumentos.size(); i++) {
-            free(argumentos_c[i]);
-        }
-        free(argumentos_c);
     }
     else { // Proceso padre
         wait(NULL); // Espera a que el proceso hijo termine
@@ -225,46 +229,46 @@ int main() {
     }
     int id = fork();
 
-    if (id == 0) { // proceso hijo favs
-        favs_process(ctp, ptc);
-    }
-    else { // proceso principal de prompt
-        while (1) {
-            propmt(); // Mostrar el prompt
+    std::vector<std::string> history; // favs dinamico
+    while (true) {
+        prompt(); // Mostrar el prompt
 
-            std::string cmd;
-            if (leerEntradaUsuario(cadenaEntrada)) // Leer la entrada del usuario
-                continue;
-            
-
-            int ejecutado = procesarCadenaEntrada(cadenaEntrada, comandos); // Procesar la entrada
-            if (!ejecutado) {
-                manejarPipesMultiples(comandos); // Manejar los comandos si hay pipes
+        if (leerEntradaUsuario(cadenaEntrada)) // Leer la entrada del usuario
+            continue;
+        
+        bool exists = false;
+        for (int i = 0; i < history.size(); i++) {
+            if (history[i].compare(cadenaEntrada) == 0) {
+                exists = true;
+                break;
             }
-
-            // std::cout << "Comandos:\n";
-            // for (int i=0;i<comandos.size();i++) {
-            //     for (int j=0;j<comandos[i].size();++j) {
-            //         std::cout << "'" << comandos[i][j] << "' ";
-            //     }
-            //     std::cout << "\n";
-            // }
-            
-            if (!ejecutado and comandos.back().size() == 1 and comandos[0][0].compare("favs") == 0) {
-                std::cout << "hi, it is a favs command\n";
-
-            //     printf("shell: trying to send a message to favs\n");
-            //     close(ptc[0]);
-            //     write(ptc[1], &numComandos, sizeof(int));
-            //     close(ptc[1]);
-
-                // close(ptc[0]);
-                // write(ptc[1], comandos, sizeof(char***)*numComandos);
-                // close(ptc[1]);
-            }
-
-            comandos.clear();
         }
+        if (!exists)
+            history.push_back(cadenaEntrada);
+        
+        int ejecutado = procesarCadenaEntrada(cadenaEntrada, comandos); // Procesar la entrada
+
+        // for (int i = 0; i < comandos.size(); i++) {
+        //     for (int j = 0; j < comandos[i].size(); j++) {
+        //         std::cout << "'" << comandos[i][j] << "' ";
+        //     }
+        //     std::cout << "\n";
+        // }
+
+        // favs no aguanta comunicación con pipe
+        if (!ejecutado and comandos.size() == 1 and comandos[0][0].compare("favs") == 0) {
+            comandos[0][0] = "./favs/favs";
+            char **argumentos_c = vvstring_to_vvcstring(comandos[0]);
+            int error = execvp(argumentos_c[0], argumentos_c);
+            free_vvcstring(argumentos_c, comandos[0].size());
+            ejecutado = 1;
+        }
+
+        if (!ejecutado) {
+            manejarPipesMultiples(comandos); // Manejar los comandos si hay pipes
+        }
+
+        comandos.clear();
     }
     return 0;
 }

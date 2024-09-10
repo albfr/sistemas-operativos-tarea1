@@ -25,77 +25,56 @@ int determinarComando(const std::string &cmd) {
 }
 
 
-int favs_process(int ctp[2], int ptc[2]) {
-    while (1) {
-        
-        int argc;
+// int favs_process(int ctp[2], int ptc[2]) {
+int main(int argc, char *argv[]) {
+    std::vector<std::string> sargv;
+    for (int i = 0; i < argc; i++)
+        sargv.push_back(std::string(argv[i]));
 
-        close(ptc[1]);
-        read(ptc[0], &argc, sizeof(int));
-        close(ptc[0]);
+    if (argc <= 1) {
+        // std::cerr << "Error: no hay comando\n";
+        // imprimirUsoCorrecto();
+        exit(1);
+    }
 
-        // printf("Child received: %d\n", argc);
+    int cmd = determinarComando(argv[1]);
+    if (cmd == -1) {
+        std::cerr << "Error: comando \'" << argv[1] << "\' no existe\n";
+        std::cerr << "Usar \"favs ayuda\" para mas información\n";
+        exit(1);
+    }
 
-        char *argv[argc];
-        close(ptc[1]);
-        read(ptc[0], argv, sizeof(char**)*argc);
-        close(ptc[0]);
-
-
-        // read(ptc[0], &argv, size(of))
-
-
-
-
-        std::vector<std::string> sargv;
-        for (int i = 0; i < argc; i++)
-            sargv.push_back(std::string(argv[i]));
-
-        if (argc <= 1) {
-            // std::cerr << "Error: no hay comando\n";
-            // imprimirUsoCorrecto();
-            exit(1);
-        }
-
-        int cmd = determinarComando(argv[1]);
-        if (cmd == -1) {
-            std::cerr << "Error: comando \'" << argv[1] << "\' no existe\n";
-            std::cerr << "Usar \"favs ayuda\" para mas información\n";
-            exit(1);
-        }
-
-        int error;
-        switch (cmd) {
-            case 0:
-                error = manejarAyuda(sargv);
-                break;
-            case 1:
-                error = manejarCrear(sargv);
-                break;
-            case 2:
-                error = manejarMostrar(sargv);
-                break;
-            case 3:
-                error = manejarEliminar(sargv);
-                break;
-            case 4:
-                error = manejarBuscar(sargv);
-                break;
-            case 5:
-                error = manejarBorrar(sargv);
-                break;
-            case 6:
-                // error = manejarEjecutar(sargv);
-                break;
-            case 7:
-                error = manejarCargar(sargv);
-                break;
-            case 8:
-                error = manejarGuardar(sargv);
-                break;
-            default:
-                error = 1;
-                break;
-        }
+    int error;
+    switch (cmd) {
+        case 0:
+            error = manejarAyuda(sargv);
+            break;
+        case 1:
+            error = manejarCrear(sargv);
+            break;
+        case 2:
+            error = manejarMostrar(sargv);
+            break;
+        case 3:
+            error = manejarEliminar(sargv);
+            break;
+        case 4:
+            error = manejarBuscar(sargv);
+            break;
+        case 5:
+            error = manejarBorrar(sargv);
+            break;
+        case 6:
+            // error = manejarEjecutar(sargv);
+            break;
+        case 7:
+            error = manejarCargar(sargv);
+            break;
+        case 8:
+            error = manejarGuardar(sargv);
+            break;
+        default:
+            error = 1;
+            break;
     }
 }

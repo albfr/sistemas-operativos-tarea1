@@ -49,23 +49,18 @@ void imprimirUsoCorrecto()
     std::cout << "\n";
 }
 
-int manejarAyuda(const std::vector<std::string> &argv)
-{
-
+int manejarAyuda(const std::vector<std::string> &argv) {
     imprimirUsoCorrecto();
     return 0;
 }
 
-int manejarCrear(const std::vector<std::string> &argv)
-{
-    if (argv.size() < 3)
-    {
+int manejarCrear(const std::vector<std::string> &argv) {
+    if (argv.size() < 3) {
         std::cerr << "Es necesario indicar un archivo\n";
         return 1;
     }
 
-    if (argv[2].compare("ruta.txt") == 0)
-    {
+    if (argv[2].compare("ruta.txt") == 0) {
         std::cerr << "El archivo no puede llamarse ruta.txt\n";
         return 1;
     }
@@ -80,13 +75,15 @@ int manejarCrear(const std::vector<std::string> &argv)
 
     size_t pos = rutaCompleta.find_last_of("/");
     std::string directorio = rutaCompleta.substr(0, pos);
+
     std::string archivo = rutaCompleta.substr(pos + 1);
 
-    if (chdir(directorio.c_str()) == -1)
-    {
+    if (pos != std::string::npos and chdir(directorio.c_str()) == -1) {
         std::cerr << "Error al cambiar de directorio\n";
         return 1;
     }
+    if (pos == std::string::npos)
+        pos = 0;
 
     // Crear el archivo de favoritos en el directorio especificado
     std::ofstream rutaArchivo;
@@ -96,8 +93,7 @@ int manejarCrear(const std::vector<std::string> &argv)
     return 0;
 }
 
-int manejarMostrar(const std::vector<std::string> &argv)
-{
+int manejarMostrar(const std::vector<std::string> &argv) {
 
     // Abrir el archivo que contiene la ruta al archivo de favoritos
     std::ifstream archivoRuta(RUTA_FAVS);
