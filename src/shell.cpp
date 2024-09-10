@@ -10,13 +10,15 @@
 #include <signal.h>
 #include <algorithm>
 #include <errno.h>
+#include "favs/favs.h"
 
 #define MAXCOM 1000 // Máximo número de caracteres para la entrada del usuario
 #define MAXLIST 100 // Máximo número de comandos
-#define NUM_COMANDOS_INTERNOS 2 // Número de comandos internos soportados
+#define NUM_COMANDOS_INTERNOS 3 // Número de comandos internos soportados
 
 // const char *COMANDOS_INTERNOS[NUM_COMANDOS_INTERNOS] = {"exit", "cd"}; // Lista de comandos internos
-const std::vector<std::string> COMANDOS_INTERNOS = {"exit", "cd"};
+const std::vector<std::string> COMANDOS_INTERNOS = {"exit", "cd", "favs"};
+std::vector<std::string> historial;
 
 // Función para mostrar el prompt de la shell, que incluye el nombre de la shell y el directorio actual
 void prompt(){
@@ -71,15 +73,19 @@ void ejecutarProceso(std::vector<std::string> &argumentos) {
         perror("Error al crear el proceso hijo");
     }
     else if (pid == 0) { // Proceso hijo
-        // Reemplaza el proceso hijo con el nuevo programa
-        char **argumentos_c = vvstring_to_vvcstring(argumentos);
-        int error = execvp(argumentos_c[0], argumentos_c);
-        free_vvcstring(argumentos_c, argumentos.size());
 
-        if (error < 0) {
-            fprintf(stderr, "errno = %d\n", errno);
-            printf("Orden \"%s\" no encontrada.\n", argumentos_c[0]);
-            exit(EXIT_FAILURE);
+        if (argumentos[0].compare(COMANDOS_INTERNOS[2]) != 0)
+        {
+            // Reemplaza el proceso hijo con el nuevo programa
+            char **argumentos_c = vvstring_to_vvcstring(argumentos);
+            int error = execvp(argumentos_c[0], argumentos_c);
+            free_vvcstring(argumentos_c, argumentos.size());
+
+            if (error < 0) {
+                fprintf(stderr, "errno = %d\n", errno);
+                printf("Orden \"%s\" no encontrada.\n", argumentos_c[0]);
+                exit(EXIT_FAILURE);
+            }
         }
     }
     else { // Proceso padre
@@ -140,7 +146,7 @@ void manejarPipesMultiples(std::vector<std::vector<std::string>> &comandos) {
 
 // Función que maneja la ejecución de comandos internos como "exit" y "cd"
 // int manejarComandosInternos(char **argumentos) {
-int manejarComandosInternos(const std::vector<std::string> &argumentos) {
+int manejarComandosInternos(std::vector<std::string> &argumentos) {
     int ejecutado = 0;
     for (int i = 0; i < NUM_COMANDOS_INTERNOS; i++) {
         if (argumentos[0].compare(COMANDOS_INTERNOS[i]) == 0) {
@@ -153,6 +159,8 @@ int manejarComandosInternos(const std::vector<std::string> &argumentos) {
                     if (chdir(argumentos[1].c_str()) != 0)
                         perror("Error al cambiar de directorio");
                     return 1;
+                case 2: // "favs"
+                    favs_process(argumentos, historial);
                     break;
             }
         }
@@ -256,6 +264,7 @@ int main() {
         // }
 
         // favs no aguanta comunicación con pipe
+        /*
         if (!ejecutado and comandos.size() == 1 and comandos[0][0].compare("favs") == 0) {
             comandos[0][0] = "./favs/favs";
             char **argumentos_c = vvstring_to_vvcstring(comandos[0]);
@@ -263,6 +272,7 @@ int main() {
             free_vvcstring(argumentos_c, comandos[0].size());
             ejecutado = 1;
         }
+        */
 
         if (!ejecutado) {
             manejarPipesMultiples(comandos); // Manejar los comandos si hay pipes

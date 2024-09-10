@@ -8,10 +8,24 @@
 
 #define RUTA_FAVS "ruta.txt"
 
+typedef std::vector<std::string> vstr;
+
 std::vector<std::vector<std::string>> favs_cmds;
 
-void imprimirUsoCorrecto()
-{
+int nombreArchivoGuardado(std::string &filename) {
+    // Abrir el archivo que contiene la ruta al archivo de favoritos
+    std::ifstream archivoRuta(RUTA_FAVS);
+    if (!archivoRuta) {
+        std::cerr << "Error: no se pudo abrir el archivo de favoritos o no existe.\n";
+        return 1;
+    }
+    std::string rutaFavoritos;
+    std::getline(archivoRuta, rutaFavoritos);
+    archivoRuta.close();
+    return 0;
+}
+
+void imprimirUsoCorrecto() {
     std::cout << "Uso: favs [comando] [opciones]\n";
     std::cout << "Permite guardar lista de comandos favoritos\n";
     std::cout << "A continuación una lista con los comandos disponibles y sus descripciones\n";
@@ -49,12 +63,12 @@ void imprimirUsoCorrecto()
     std::cout << "\n";
 }
 
-int manejarAyuda(const std::vector<std::string> &argv) {
+int manejarAyuda(const vstr &argv) {
     imprimirUsoCorrecto();
     return 0;
 }
 
-int manejarCrear(const std::vector<std::string> &argv) {
+int manejarCrear(const vstr &argv) {
     if (argv.size() < 3) {
         std::cerr << "Es necesario indicar un archivo\n";
         return 1;
@@ -93,33 +107,25 @@ int manejarCrear(const std::vector<std::string> &argv) {
     return 0;
 }
 
-int manejarMostrar(const std::vector<std::string> &argv) {
+int manejarMostrar(const vstr &argv, vstr &historial) {
 
-    // Abrir el archivo que contiene la ruta al archivo de favoritos
-    std::ifstream archivoRuta(RUTA_FAVS);
-    if (!archivoRuta)
-    {
-        std::cerr << "Error: no se pudo abrir el archivo de favoritos o no existe.\n";
-        return 1;
-    }
 
     // Leer la ruta del archivo de favoritos desde "ruta.txt"
     std::string rutaFavoritos;
-    std::getline(archivoRuta, rutaFavoritos);
-    archivoRuta.close();
+    int error = nombreArchivoGuardado(rutaFavoritos);
+    if (error)
+        return 1;
 
     // Intentar abrir el archivo de favoritos usando la ruta obtenida
     std::ifstream archivoFavoritos(rutaFavoritos);
-    if (!archivoFavoritos)
-    {
+    if (!archivoFavoritos) {
         std::cerr << "Error: no se pudo abrir el archivo de favoritos en la ruta especificada (" << rutaFavoritos << ").\n";
         return 1;
     }
 
     // Verificar si el archivo de favoritos está vacío
     archivoFavoritos.seekg(0, std::ios::end); // Mover el puntero al final del archivo
-    if (archivoFavoritos.tellg() == 0)
-    {
+    if (archivoFavoritos.tellg() == 0) {
         std::cout << "El archivo de favoritos está vacío. No hay comandos registrados.\n";
         archivoFavoritos.close();
         return 0;
@@ -130,10 +136,12 @@ int manejarMostrar(const std::vector<std::string> &argv) {
     std::string linea;
     int indice = 1; // indice
 
-    while (std::getline(archivoFavoritos, linea))
-    {
+    while (std::getline(archivoFavoritos, linea)) {
         std::cout << indice << ". " << linea << "\n"; // Mostrar el índice y el comando
         indice++;
+    }
+    for (int i = 0; i < historial.size(); i++) {
+        std::cout << indice+i << ". " << historial[i] << "\n";
     }
 
     archivoFavoritos.close();
@@ -141,7 +149,7 @@ int manejarMostrar(const std::vector<std::string> &argv) {
     return 0;
 }
 
-int manejarEliminar(const std::vector<std::string> &argv)
+int manejarEliminar(const vstr &argv)
 {
     /*
         Recibe un string que contiene los n números de los comandos a eliminar separados por comas:
@@ -176,7 +184,7 @@ int manejarEliminar(const std::vector<std::string> &argv)
     }
 
     // Leer todos los comandos de favoritos en un vector
-    std::vector<std::string> comandos;
+    vstr comandos;
     std::string linea;
     while (std::getline(archivoFavoritos, linea))
     {
@@ -240,7 +248,7 @@ int manejarEliminar(const std::vector<std::string> &argv)
     return 0;
 }
 
-int manejarBuscar(const std::vector<std::string> &argv)
+int manejarBuscar(const vstr &argv)
 {
     if (argv.size() < 3)
     {
@@ -272,7 +280,7 @@ int manejarBuscar(const std::vector<std::string> &argv)
     }
 
     // Leer todos los comandos de favoritos en un vector
-    std::vector<std::string> comandos;
+    vstr comandos;
     std::string linea;
     while (std::getline(archivoFavoritos, linea))
     {
@@ -287,10 +295,8 @@ int manejarBuscar(const std::vector<std::string> &argv)
 
     for (const auto &comando : comandos)
     {
-        if (comando.find(buscarCmd) != std::string::npos)
-        {
-            if (!encontrado)
-            {
+        if (comando.find(buscarCmd) != std::string::npos) {
+            if (!encontrado) {
                 std::cout << "Comandos que contienen \"" << buscarCmd << "\":\n";
             }
             std::cout << indice << ". " << comando << "\n";
@@ -299,20 +305,17 @@ int manejarBuscar(const std::vector<std::string> &argv)
         indice++;
     }
 
-    if (!encontrado)
-    {
+    if (!encontrado) {
         std::cout << "No se encontraron comandos que contengan \"" << buscarCmd << "\".\n";
     }
 
     return 0;
 }
 
-int manejarBorrar(const std::vector<std::string> &argv)
-{
+int manejarBorrar(const vstr &argv) {
     // Abre el archivo de favoritos especificado por la constante RUTA_FAVS en modo de escritura.
     std::ifstream archivofavs(RUTA_FAVS);
-    if (!archivofavs)
-    {
+    if (!archivofavs) {
         std::cerr << "Error: no se pudo abrir el archivo de favoritos o no existe.\n";
         return 1;
     }
@@ -321,8 +324,7 @@ int manejarBorrar(const std::vector<std::string> &argv)
     std::getline(archivofavs, rutaArchivo);
     archivofavs.close();
 
-    if (rutaArchivo.empty())
-    {
+    if (rutaArchivo.empty()) {
         std::cerr << "Error: no se ha creado un archivo de favoritos\n";
         return 1;
     }
@@ -338,13 +340,12 @@ int manejarBorrar(const std::vector<std::string> &argv)
 
     return 0;
 }
-/*
-//ni cagando funciona pero es la idae xd
-std::string manejarEjecutar(const std::vector<std::string> &argv) { //retornar la linea como string para que la ejecute la shell
+
+std::string manejarEjecutar(const vstr &argv) { //retornar la linea como string para que la ejecute la shell
 
     int num;
     try {
-        num = std::stoi(argv[1]);  // "favs num ejecutar"  transformar "num" a int
+        num = std::stoi(argv[2]);  // "favs ejecutar num"  transformar "num" a int
     } catch (const std::invalid_argument&) {
         std::cerr << "Error: El primer argumento no es un número válido.\n";
         return "1";
@@ -375,6 +376,43 @@ std::string manejarEjecutar(const std::vector<std::string> &argv) { //retornar l
     return "Error: Número de línea fuera de rango.";  // Retorna un mensaje de error si la línea no existe
 
     return 0;
-}*/
-int manejarCargar(const std::vector<std::string> &argv) { return 0; }
-int manejarGuardar(const std::vector<std::string> &argv) { return 0; }
+}
+
+
+int manejarCargar(const vstr &argv, vstr &historial) {
+    std::string nombreArchivo;
+    int error = nombreArchivoGuardado(nombreArchivo);
+    if (error)
+        return 1;
+
+    std::string line;
+    std::fstream fs;
+    fs.open(nombreArchivo, std::fstream::in | std::fstream::app);
+
+    while (getline(fs, line)) {
+        historial.push_back(line);
+    }
+
+    fs.close();
+
+    // fs.open(nombreArchivo, std::ofstream::out | std::ofstream::trunc);
+    // fs.close();
+
+    return 0;
+}
+
+int manejarGuardar(const vstr &argv, vstr &historial) {
+    std::string nombreArchivo;
+    int error = nombreArchivoGuardado(nombreArchivo);
+    if (error)
+        return 1;
+
+    std::fstream fs;
+    fs.open(nombreArchivo, std::fstream::out | std::fstream::app);
+    for (int i = 0 ;i < historial.size(); i++) {
+        fs << historial[i] << "\n";
+    }
+    fs.close();
+    return 0;
+}
+

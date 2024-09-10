@@ -25,12 +25,9 @@ int determinarComando(const std::string &cmd) {
 }
 
 
-// int favs_process(int ctp[2], int ptc[2]) {
-int main(int argc, char *argv[]) {
-    std::vector<std::string> sargv;
-    for (int i = 0; i < argc; i++)
-        sargv.push_back(std::string(argv[i]));
+void favs_process(std::vector<std::string> &argv, std::vector<std::string> &historial) {
 
+    int argc = argv.size();
     if (argc <= 1) {
         // std::cerr << "Error: no hay comando\n";
         // imprimirUsoCorrecto();
@@ -47,31 +44,31 @@ int main(int argc, char *argv[]) {
     int error;
     switch (cmd) {
         case 0:
-            error = manejarAyuda(sargv);
+            error = manejarAyuda(argv);
             break;
         case 1:
-            error = manejarCrear(sargv);
+            error = manejarCrear(argv);
             break;
         case 2:
-            error = manejarMostrar(sargv);
+            error = manejarMostrar(argv, historial);
             break;
         case 3:
-            error = manejarEliminar(sargv);
+            error = manejarEliminar(argv);
             break;
         case 4:
-            error = manejarBuscar(sargv);
+            error = manejarBuscar(argv);
             break;
         case 5:
-            error = manejarBorrar(sargv);
+            error = manejarBorrar(argv);
             break;
         case 6:
-            // error = manejarEjecutar(sargv);
+            // error = manejarEjecutar(argv);
             break;
         case 7:
-            error = manejarCargar(sargv);
+            error = manejarCargar(argv, historial);
             break;
         case 8:
-            error = manejarGuardar(sargv);
+            error = manejarGuardar(argv, historial);
             break;
         default:
             error = 1;
